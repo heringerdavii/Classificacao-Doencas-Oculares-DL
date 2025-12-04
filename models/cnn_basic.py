@@ -17,7 +17,7 @@ IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
 EPOCHS = 50 
-SEEDS = [99] 
+SEEDS = [42, 10, 2023, 13, 99] 
 
 # Função para garantir a reprodutibilidade (fixar todas as sementes)
 def set_seeds(seed_value):
@@ -134,7 +134,7 @@ def evaluate_model(model, generator, title, seed):
     # Matriz de Confusão (Cálculo)
     conf_matrix = confusion_matrix(y_true, y_pred)
     
-    # 🚨 CORREÇÃO E NOVO: Imprimir Matriz e Métricas RAW 
+   
     # Esta linha mostra o array de números brutos para o seu grupo (Coletores de dados)
     print("Matriz de Confusão (Teste):\n", conf_matrix) 
     print(f"RAW METRICS: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, F1={f1_score:.4f}") # Métricas de Teste
