@@ -5,20 +5,22 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
-from tensorflow.keras.applications import EfficientNetB0 # NOVO IMPORT para EfficientNet
+from tensorflow.keras.applications import EfficientNetB0
 import numpy as np
 import os
 import random
 import pandas as pd
 
-#Parâmetros do Projeto 
+# --- Parâmetros do Projeto ---
 NUM_CLASSES = 4 
 IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
+# AJUSTE PARA OBRIGATÓRIO: 50 épocas e 5 sementes!
 EPOCHS = 50 
 SEEDS = [42, 10, 2023, 13, 99] 
 
+# Função para garantir a reprodutibilidade (fixar todas as sementes)
 def set_seeds(seed_value):
     os.environ['PYTHONHASHSEED'] = str(seed_value)
     random.seed(seed_value)
@@ -29,7 +31,7 @@ def set_seeds(seed_value):
 results_no_aug = []
 results_with_aug = []
 
-#1. Definição do Modelo EfficientNetB0 (Transfer Learning) 
+# --- 1. Definição do Modelo EfficientNetB0 (Transfer Learning) ---
 def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NUM_CLASSES):
     
     # 1. Carregar a Base EfficientNetB0 (Congelar os pesos)
@@ -63,7 +65,7 @@ def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classe
     
     return model
 
-# FUNÇÃO PARA PLOTAR MATRIZ DE CONFUSÃO
+
 def plot_confusion_matrix(conf_matrix, class_names, title):
     """Gera um mapa de calor visual da Matriz de Confusão."""
     
@@ -81,10 +83,11 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
     plt.xlabel('Rótulo Previsto (Predicted Label)')
     plt.show()
 
-#2. Preparação do Dataset e Data Augmentation
+# --- 2. Preparação do Dataset e Data Augmentation (Sem Alteração) ---
 DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/train'
 DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/test'
 
+# [ ... Restante da Seção 2 e Criação dos Generators ... ]
 datagen_no_aug = ImageDataGenerator(rescale=1./255)
 datagen_with_aug = ImageDataGenerator(
     rescale=1./255,
@@ -115,7 +118,7 @@ train_generator_with_aug = datagen_with_aug.flow_from_directory(
 )
 
 
-# FUNÇÃO DE AVALIAÇÃO (Sem Alteração) 
+# --- FUNÇÃO DE AVALIAÇÃO (Com RAW Metrics) ---
 def evaluate_model(model, generator, title, seed):
     print(f"\n--- Avaliação: {title} (Seed: {seed}) ---")
 
@@ -128,43 +131,45 @@ def evaluate_model(model, generator, title, seed):
     f1_score = report['weighted avg']['f1-score']
     conf_matrix = confusion_matrix(y_true, y_pred)
     
-    CLASS_NAMES = list(generator.class_indices.keys())
-    plot_confusion_matrix(conf_matrix, CLASS_NAMES, title=f"Matriz de Confusão - {title} (Seed: {seed})")
-    
+    # Imprimir Matriz de Confusão em array de texto
+    print("Matriz de Confusão (Teste):\n", conf_matrix) 
     # Imprimir métricas RAW para facilitar o rastreamento das 5 execuções
     print(f"RAW METRICS: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, F1={f1_score:.4f}")
 
+    CLASS_NAMES = list(generator.class_indices.keys())
+    plot_confusion_matrix(conf_matrix, CLASS_NAMES, title=f"Matriz de Confusão - {title} (Seed: {seed})")
+    
     return {
         'Acurácia': acc, 'Precision': prec, 'Recall': rec, 'F1-score': f1_score, 'Matriz de Confusão': conf_matrix
     }
 
 
-#3. Loop de Execução para Reprodutibilidade (5 Vezes) 
+# --- 3. Loop de Execução para Reprodutibilidade (5 Vezes) ---
 for run in range(len(SEEDS)):
     seed = SEEDS[run]
     set_seeds(seed)
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
 
-    # CENÁRIO 1: SEM DATA AUGMENTATION
-    cnn_model_no_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
+    # --- CENÁRIO 1: SEM DATA AUGMENTATION ---
+    model_no_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
     print("\n--- Treinando SEM Data Augmentation ---")
-    cnn_model_no_aug.fit(
+    model_no_aug.fit(
         train_generator_no_aug, epochs=EPOCHS, steps_per_epoch=len(train_generator_no_aug), verbose=1
     )
-    result = evaluate_model(cnn_model_no_aug, test_generator, "EfficientNetB0 SEM Data Aug", seed)
+    result = evaluate_model(model_no_aug, test_generator, "EfficientNetB0 SEM Data Aug", seed)
     results_no_aug.append(result)
 
-    #CENÁRIO 2: COM DATA AUGMENTATION 
+    # --- CENÁRIO 2: COM DATA AUGMENTATION ---
     set_seeds(seed) 
-    cnn_model_with_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
+    model_with_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
     print("\n--- Treinando COM Data Augmentation ---")
-    cnn_model_with_aug.fit(
+    model_with_aug.fit(
         train_generator_with_aug, epochs=EPOCHS, steps_per_epoch=len(train_generator_with_aug), verbose=1
     )
-    result = evaluate_model(cnn_model_with_aug, test_generator, "EfficientNetB0 COM Data Aug", seed)
+    result = evaluate_model(model_with_aug, test_generator, "EfficientNetB0 COM Data Aug", seed)
     results_with_aug.append(result)
 
-#4. Cálculo e Apresentação Final (EfficientNetB0)
+# --- 4. Cálculo e Apresentação Final (EfficientNetB0) ---
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
     mean = df.mean().to_dict()
