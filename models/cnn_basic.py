@@ -72,7 +72,7 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
 # 2. Preparação do Dataset e Data Augmentation 
 
 DATASET_PATH_TRAIN = '/caminho/dataset_split/train'
-DATASET_PATH_TEST = '/caminho/dataset_split/train''
+DATASET_PATH_TEST = '/caminho/dataset_split/train'
 
 
 datagen_no_aug = ImageDataGenerator(rescale=1./255)
