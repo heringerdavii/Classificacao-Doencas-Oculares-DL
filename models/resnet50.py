@@ -17,7 +17,7 @@ IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
 EPOCHS = 50 
-SEEDS = [42, 10, 2023, 13, 99] 
+SEEDS = [42] 
 
 def set_seeds(seed_value):
     os.environ['PYTHONHASHSEED'] = str(seed_value)
@@ -28,20 +28,35 @@ def set_seeds(seed_value):
 results_no_aug = []
 results_with_aug = []
 
-# --- 1. Definição do Modelo ResNet-50 (Transfer Learning) ---
+# --- 1. Definição do Modelo ResNet-50 (Transfer Learning com Fine-Tuning) ---
 def create_resnet50_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NUM_CLASSES):
+    
+    # 1. Carregar a Base ResNet-50
     base_model = ResNet50(
         weights='imagenet', include_top=False, input_shape=input_shape
     )
-    base_model.trainable = False 
+    
+    # Ativar o treinamento da base para o Fine-Tuning
+    base_model.trainable = True 
+    
+    # Congelar as primeiras 140 camadas e treinar o restante (Fine-Tuning)
+    fine_tune_at = 140 
+    for layer in base_model.layers[:fine_tune_at]:
+        layer.trainable = False
+        
+    # 2. Construir a nova cabeça de classificação
     model = Sequential([
         base_model, GlobalAveragePooling2D(), Dropout(0.5), Dense(256, activation='relu'),
         Dense(num_classes, activation='softmax')
     ])
+    
+    # 3. Compilação com Learning Rate Baixo (CRUCIAL para Fine-Tuning)
     model.compile(
-        optimizer='adam', loss='categorical_crossentropy', 
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), # Learning Rate reduzido
+        loss='categorical_crossentropy', 
         metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
     )
+    
     return model
 
 # --- FUNÇÃO PARA PLOTAR MATRIZ DE CONFUSÃO (Sem Alteração) ---
@@ -57,8 +72,8 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
     plt.show()
 
 # --- 2. Preparação do Dataset e Data Augmentation (Caminhos e Geradores) ---
-DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/train'
-DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/test'
+DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Dataset/train'
+DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Dataset/test'
 
 datagen_no_aug = ImageDataGenerator(rescale=1./255)
 datagen_with_aug = ImageDataGenerator(
@@ -92,7 +107,9 @@ def evaluate_model(model, generator, title, seed):
     f1_score = report['weighted avg']['f1-score']
     conf_matrix = confusion_matrix(y_true, y_pred)
     
+    # Impressão da Matriz de Confusão em array de texto
     print("Matriz de Confusão (Teste):\n", conf_matrix) 
+    # Impressão das métricas RAW (Acc, Prec, Rec, F1)
     print(f"RAW METRICS: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, F1={f1_score:.4f}")
 
     CLASS_NAMES = list(generator.class_indices.keys())
