@@ -17,7 +17,7 @@ IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
 EPOCHS = 50 
-SEEDS = [42, 10, 2023, 13, 99] 
+SEEDS = [99] 
 
 # Função para garantir a reprodutibilidade (fixar todas as sementes)
 def set_seeds(seed_value):
@@ -71,8 +71,8 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
 
 # 2. Preparação do Dataset e Data Augmentation 
 
-DATASET_PATH_TRAIN = '/caminho/dataset_split/train'
-DATASET_PATH_TEST = '/caminho/dataset_split/train'
+DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Dataset/train'
+DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Dataset/test'
 
 
 datagen_no_aug = ImageDataGenerator(rescale=1./255)
@@ -115,7 +115,7 @@ train_generator_with_aug = datagen_with_aug.flow_from_directory(
 )
 
 
-# --- FUNÇÃO DE AVALIAÇÃO ---
+# --- FUNÇÃO DE AVALIAÇÃO MODIFICADA ---
 def evaluate_model(model, generator, title, seed):
     print(f"\n--- Avaliação: {title} (Seed: {seed}) ---")
 
@@ -134,7 +134,12 @@ def evaluate_model(model, generator, title, seed):
     # Matriz de Confusão (Cálculo)
     conf_matrix = confusion_matrix(y_true, y_pred)
     
-    # NOVO: PLOTAR A MATRIZ VISUALMENTE
+    # 🚨 CORREÇÃO E NOVO: Imprimir Matriz e Métricas RAW 
+    # Esta linha mostra o array de números brutos para o seu grupo (Coletores de dados)
+    print("Matriz de Confusão (Teste):\n", conf_matrix) 
+    print(f"RAW METRICS: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, F1={f1_score:.4f}") # Métricas de Teste
+
+    # PLOTAR A MATRIZ VISUALMENTE
     CLASS_NAMES = list(generator.class_indices.keys())
     plot_confusion_matrix(
         conf_matrix, 
@@ -142,7 +147,6 @@ def evaluate_model(model, generator, title, seed):
         title=f"Matriz de Confusão - {title} (Seed: {seed})"
     )
     
- 
     # Coletar resultados
     return {
         'Acurácia': acc,
@@ -153,15 +157,13 @@ def evaluate_model(model, generator, title, seed):
     }
 
 
-
-    # 3. Loop de Execução para Reprodutibilidade (5 Vezes) 
+# 3. Loop de Execução para Reprodutibilidade (5 Vezes) 
 # O loop vai rodar 5 vezes, uma para cada semente em SEEDS
 
 for run in range(len(SEEDS)):
     seed = SEEDS[run]
     set_seeds(seed)
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
-
 
 
     # CENÁRIO 1: SEM DATA AUGMENTATION
@@ -176,7 +178,6 @@ for run in range(len(SEEDS)):
 
     result = evaluate_model(cnn_model_no_aug, test_generator, "CNN SEM Data Aug", seed)
     results_no_aug.append(result)
-
 
 
     # CENÁRIO 2: COM DATA AUGMENTATION 
@@ -194,7 +195,6 @@ for run in range(len(SEEDS)):
     results_with_aug.append(result)
 
 
-
 # 4. Cálculo e Apresentação Final (CNN Básica) 
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
@@ -204,7 +204,7 @@ def calculate_stats(results):
     final_results = {}
 
     for key in mean:
-        final_results[key] = f"{mean[key]:.4f} ± {std[key]:.4f}"   # Formato: Média ± DP
+        final_results[key] = f"{mean[key]:.4f} ± {std[key]:.4f}" # Formato: Média ± DP
     return final_results
 
 # Resultados para a Tabela 1 (Sem Data Aug)
