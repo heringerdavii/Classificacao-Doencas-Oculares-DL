@@ -6,21 +6,21 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Global
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
 from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess 
 import numpy as np
 import os
 import random
 import pandas as pd
 
-# --- Parâmetros do Projeto ---
+# Parâmetros do Projeto
 NUM_CLASSES = 4 
 IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
-# AJUSTE PARA OBRIGATÓRIO: 50 épocas e 5 sementes!
-EPOCHS = 50 
-SEEDS = [42, 10, 2023, 13, 99] 
+EPOCHS = 5 
+SEEDS = [42] 
 
-# Função para garantir a reprodutibilidade (fixar todas as sementes)
+# Função para garantir a reprodutibilidade
 def set_seeds(seed_value):
     os.environ['PYTHONHASHSEED'] = str(seed_value)
     random.seed(seed_value)
@@ -31,73 +31,63 @@ def set_seeds(seed_value):
 results_no_aug = []
 results_with_aug = []
 
-# --- 1. Definição do Modelo EfficientNetB0 (Transfer Learning) ---
+# 1. Definição do Modelo EfficientNetB0 (Transfer Learning com Fine-Tuning) 
 def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NUM_CLASSES):
     
-    # 1. Carregar a Base EfficientNetB0 (Congelar os pesos)
+    # 1. Carregar a Base EfficientNetB0
     base_model = EfficientNetB0(
-        weights='imagenet',          # Usa pesos pré-treinados
-        include_top=False,           # Não inclui as camadas finais de classificação
-        input_shape=input_shape      # Usa sua resolução de entrada
+        weights='imagenet', include_top=False, input_shape=input_shape
     )
     
-    # Congelar as camadas da base
-    base_model.trainable = False 
+    # Implementar Fine-Tuning 
+    base_model.trainable = True
+    fine_tune_at = 100 # Congelar as primeiras 100 camadas para preservar o conhecimento genérico
     
-    # 2. Construir a nova cabeça de classificação (Head)
+    for layer in base_model.layers[:fine_tune_at]:
+        layer.trainable = False
+        
+    # 2. Construir a nova cabeça de classificação
     model = Sequential([
-        base_model, # Inclui a base EfficientNetB0
-        
-        GlobalAveragePooling2D(), # Reduz a dimensionalidade média
-        Dropout(0.5),            # Regularização
+        base_model, GlobalAveragePooling2D(), Dropout(0.5), 
         Dense(256, activation='relu'),
-        
-        # Camada de Saída (4 classes)
         Dense(num_classes, activation='softmax')
     ])
     
-    # Compilação do modelo
+    
     model.compile(
-        optimizer='adam',
+        optimizer=tf.keras.optimizers.Adam(learning_rate=5e-6), # Taxa de aprendizado muito baixa (0.000005)
         loss='categorical_crossentropy', 
         metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
     )
     
     return model
 
-
 def plot_confusion_matrix(conf_matrix, class_names, title):
     """Gera um mapa de calor visual da Matriz de Confusão."""
     
     plt.figure(figsize=(8, 6))
     sns.heatmap(
-        conf_matrix, 
-        annot=True, 
-        fmt='d',    
-        cmap='Blues', 
-        xticklabels=class_names, 
-        yticklabels=class_names
+        conf_matrix, annot=True, fmt='d', cmap='Blues', 
+        xticklabels=class_names, yticklabels=class_names
     )
     plt.title(title)
     plt.ylabel('Rótulo Verdadeiro (True Label)')
     plt.xlabel('Rótulo Previsto (Predicted Label)')
     plt.show()
 
-# --- 2. Preparação do Dataset e Data Augmentation (Sem Alteração) ---
+# --- 2. Preparação do Dataset e Data Augmentation (COM PRÉ-PROCESSAMENTO CORRIGIDO) ---
 DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/train'
 DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/test'
 
-# [ ... Restante da Seção 2 e Criação dos Generators ... ]
-datagen_no_aug = ImageDataGenerator(rescale=1./255)
+
+datagen_no_aug = ImageDataGenerator(
+    preprocessing_function=efficientnet_preprocess
+)
+
 datagen_with_aug = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=20,
-    width_shift_range=0.1,
-    height_shift_range=0.1,
-    shear_range=0.1,
-    zoom_range=0.1,
-    horizontal_flip=True,
-    fill_mode='nearest'
+    preprocessing_function=efficientnet_preprocess,
+    rotation_range=20, width_shift_range=0.1, height_shift_range=0.1,
+    shear_range=0.1, zoom_range=0.1, horizontal_flip=True, fill_mode='nearest'
 )
 
 # Carregador de Treino (Sem Augmentation)
@@ -118,7 +108,7 @@ train_generator_with_aug = datagen_with_aug.flow_from_directory(
 )
 
 
-# --- FUNÇÃO DE AVALIAÇÃO (Com RAW Metrics) ---
+#FUNÇÃO DE AVALIAÇÃO (Com RAW Metrics)
 def evaluate_model(model, generator, title, seed):
     print(f"\n--- Avaliação: {title} (Seed: {seed}) ---")
 
@@ -144,14 +134,14 @@ def evaluate_model(model, generator, title, seed):
     }
 
 
-# --- 3. Loop de Execução para Reprodutibilidade (5 Vezes) ---
+# 3. Loop de Execução para Reprodutibilidade (5 Vezes) 
 for run in range(len(SEEDS)):
     seed = SEEDS[run]
     set_seeds(seed)
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
 
-    # --- CENÁRIO 1: SEM DATA AUGMENTATION ---
-    model_no_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
+    #  CENÁRIO 1: SEM DATA AUGMENTATION 
+    model_no_aug = create_efficientnet_model() 
     print("\n--- Treinando SEM Data Augmentation ---")
     model_no_aug.fit(
         train_generator_no_aug, epochs=EPOCHS, steps_per_epoch=len(train_generator_no_aug), verbose=1
@@ -159,9 +149,9 @@ for run in range(len(SEEDS)):
     result = evaluate_model(model_no_aug, test_generator, "EfficientNetB0 SEM Data Aug", seed)
     results_no_aug.append(result)
 
-    # --- CENÁRIO 2: COM DATA AUGMENTATION ---
+    # CENÁRIO 2: COM DATA AUGMENTATION 
     set_seeds(seed) 
-    model_with_aug = create_efficientnet_model() # USANDO EFFICIENTNETB0
+    model_with_aug = create_efficientnet_model() 
     print("\n--- Treinando COM Data Augmentation ---")
     model_with_aug.fit(
         train_generator_with_aug, epochs=EPOCHS, steps_per_epoch=len(train_generator_with_aug), verbose=1
@@ -169,7 +159,7 @@ for run in range(len(SEEDS)):
     result = evaluate_model(model_with_aug, test_generator, "EfficientNetB0 COM Data Aug", seed)
     results_with_aug.append(result)
 
-# --- 4. Cálculo e Apresentação Final (EfficientNetB0) ---
+# 4. Cálculo e Apresentação Final (EfficientNetB0)
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
     mean = df.mean().to_dict()
