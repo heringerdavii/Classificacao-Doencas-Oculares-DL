@@ -1,4 +1,4 @@
- Classificação de Doenças Oculares com Deep Learning
+  Classificação de Doenças Oculares com Deep Learning
 
 Este repositório contém os scripts para o trabalho prático de classificação de 4 doenças oculares usando as arquiteturas **CNN básica, ResNet-50 e Efficient Net**.
 
@@ -12,8 +12,6 @@ Projeto de classificação de 4 doenças oculares via Deep Learning. Implementa�
 
 O ambiente recomendado é o **Google Colab** com aceleração **GPU**. Instale as dependências usando o requirements.txt:
 
-bash
-!pip install -r requirements.txt
 
 1.2 Montar o Google Drive
 O dataset dividido (dataset_split) deve estar no Google Drive. 
