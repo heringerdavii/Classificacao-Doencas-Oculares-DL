@@ -19,7 +19,7 @@ BATCH_SIZE = 32
 EPOCHS = 50 
 SEEDS = [42, 10, 2023, 13, 99] 
 
-# Função para garantir a reprodutibilidade (fixar todas as sementes)
+# Função para garantir a reprodutibilidade 
 def set_seeds(seed_value):
     os.environ['PYTHONHASHSEED'] = str(seed_value)
     random.seed(seed_value)
@@ -115,7 +115,7 @@ train_generator_with_aug = datagen_with_aug.flow_from_directory(
 )
 
 
-# --- FUNÇÃO DE AVALIAÇÃO MODIFICADA ---
+# Função de avaliação
 def evaluate_model(model, generator, title, seed):
     print(f"\n--- Avaliação: {title} (Seed: {seed}) ---")
 
@@ -131,7 +131,7 @@ def evaluate_model(model, generator, title, seed):
     report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
     f1_score = report['weighted avg']['f1-score']
 
-    # Matriz de Confusão (Cálculo)
+    # Matriz de Confusão 
     conf_matrix = confusion_matrix(y_true, y_pred)
     
    
@@ -166,7 +166,7 @@ for run in range(len(SEEDS)):
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
 
 
-    # CENÁRIO 1: SEM DATA AUGMENTATION
+    # Cenário 1: Sem data augmentation
     cnn_model_no_aug = create_basic_cnn()
     print("\n--- Treinando SEM Data Augmentation ---")
     cnn_model_no_aug.fit(
@@ -180,8 +180,8 @@ for run in range(len(SEEDS)):
     results_no_aug.append(result)
 
 
-    # CENÁRIO 2: COM DATA AUGMENTATION 
-    set_seeds(seed) # Resetar semente antes de re-criar/treinar novo modelo
+    # Cenário 2: Com data augmentation
+    set_seeds(seed) 
     cnn_model_with_aug = create_basic_cnn()
     print("\n--- Treinando COM Data Augmentation ---")
     cnn_model_with_aug.fit(
@@ -195,7 +195,7 @@ for run in range(len(SEEDS)):
     results_with_aug.append(result)
 
 
-# 4. Cálculo e Apresentação Final (CNN Básica) 
+# 4. Cálculo e Apresentação Final 
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
     mean = df.mean().to_dict()
@@ -204,7 +204,7 @@ def calculate_stats(results):
     final_results = {}
 
     for key in mean:
-        final_results[key] = f"{mean[key]:.4f} ± {std[key]:.4f}" # Formato: Média ± DP
+        final_results[key] = f"{mean[key]:.4f} ± {std[key]:.4f}"
     return final_results
 
 # Resultados para a Tabela 1 (Sem Data Aug)
