@@ -11,7 +11,7 @@ import os
 import random
 import pandas as pd
 
-# --- Parâmetros do Projeto ---
+# Parâmetros do Projeto 
 NUM_CLASSES = 4 
 IMG_HEIGHT = 128
 IMG_WIDTH = 128
@@ -28,18 +28,16 @@ def set_seeds(seed_value):
 results_no_aug = []
 results_with_aug = []
 
-# --- 1. Definição do Modelo ResNet-50 (Transfer Learning com Fine-Tuning) ---
+#  1. Definição do Modelo ResNet-50 
 def create_resnet50_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NUM_CLASSES):
     
-    # 1. Carregar a Base ResNet-50
     base_model = ResNet50(
         weights='imagenet', include_top=False, input_shape=input_shape
     )
     
-    # Ativar o treinamento da base para o Fine-Tuning
     base_model.trainable = True 
     
-    # Congelar as primeiras 140 camadas e treinar o restante (Fine-Tuning)
+    
     fine_tune_at = 140 
     for layer in base_model.layers[:fine_tune_at]:
         layer.trainable = False
@@ -50,16 +48,15 @@ def create_resnet50_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NU
         Dense(num_classes, activation='softmax')
     ])
     
-    # 3. Compilação com Learning Rate Baixo (CRUCIAL para Fine-Tuning)
+    # 3. Compilação com Learning Rate Baixo 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), # Learning Rate reduzido
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), 
         loss='categorical_crossentropy', 
         metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
     )
     
     return model
 
-# --- FUNÇÃO PARA PLOTAR MATRIZ DE CONFUSÃO (Sem Alteração) ---
 def plot_confusion_matrix(conf_matrix, class_names, title):
     plt.figure(figsize=(8, 6))
     sns.heatmap(
@@ -71,7 +68,6 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
     plt.xlabel('Rótulo Previsto (Predicted Label)')
     plt.show()
 
-# --- 2. Preparação do Dataset e Data Augmentation (Caminhos e Geradores) ---
 DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Dataset/train'
 DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Dataset/test'
 
@@ -94,7 +90,6 @@ train_generator_with_aug = datagen_with_aug.flow_from_directory(
     DATASET_PATH_TRAIN, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE, class_mode='categorical'
 )
 
-# --- FUNÇÃO DE AVALIAÇÃO COM IMPRESSÃO DE RAW DATA ---
 def evaluate_model(model, generator, title, seed):
     print(f"\n--- Avaliação: {title} (Seed: {seed}) ---")
 
@@ -119,20 +114,20 @@ def evaluate_model(model, generator, title, seed):
         'Acurácia': acc, 'Precision': prec, 'Recall': rec, 'F1-score': f1_score, 'Matriz de Confusão': conf_matrix
     }
 
-# --- 3. Loop de Execução para Reprodutibilidade (5 Vezes) ---
+# 3. Loop de Execução para Reprodutibilidade (5 Vezes) 
 for run in range(len(SEEDS)):
     seed = SEEDS[run]
     set_seeds(seed)
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
 
-    # --- CENÁRIO 1: SEM DATA AUGMENTATION ---
+    #Cenário 1: Sem data augmentation
     model_no_aug = create_resnet50_model() 
     print("\n--- Treinando SEM Data Augmentation ---")
     model_no_aug.fit(train_generator_no_aug, epochs=EPOCHS, steps_per_epoch=len(train_generator_no_aug), verbose=1)
     result = evaluate_model(model_no_aug, test_generator, "ResNet-50 SEM Data Aug", seed)
     results_no_aug.append(result)
 
-    # --- CENÁRIO 2: COM DATA AUGMENTATION ---
+    #Cenário 2: Com data augmentation
     set_seeds(seed) 
     model_with_aug = create_resnet50_model() 
     print("\n--- Treinando COM Data Augmentation ---")
@@ -140,7 +135,7 @@ for run in range(len(SEEDS)):
     result = evaluate_model(model_with_aug, test_generator, "ResNet-50 COM Data Aug", seed)
     results_with_aug.append(result)
 
-# --- 4. Cálculo e Apresentação Final (ResNet-50) ---
+# 4. Cálculo e Apresentação Final
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
     mean = df.mean().to_dict()
