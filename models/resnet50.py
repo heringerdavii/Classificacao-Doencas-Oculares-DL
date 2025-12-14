@@ -17,7 +17,7 @@ IMG_HEIGHT = 128
 IMG_WIDTH = 128
 BATCH_SIZE = 32
 EPOCHS = 50 
-SEEDS = [42] 
+SEEDS = [42, 10, 2023, 13, 99] 
 
 def set_seeds(seed_value):
     os.environ['PYTHONHASHSEED'] = str(seed_value)
