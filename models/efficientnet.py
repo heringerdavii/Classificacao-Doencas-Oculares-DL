@@ -31,7 +31,7 @@ def set_seeds(seed_value):
 results_no_aug = []
 results_with_aug = []
 
-# 1. Definição do Modelo EfficientNetB0 (Transfer Learning com Fine-Tuning) 
+# 1. Definição do Modelo EfficientNetB0 
 def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classes=NUM_CLASSES):
     
     # 1. Carregar a Base EfficientNetB0
@@ -41,12 +41,11 @@ def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classe
     
     # Implementar Fine-Tuning 
     base_model.trainable = True
-    fine_tune_at = 100 # Congelar as primeiras 100 camadas para preservar o conhecimento genérico
+    fine_tune_at = 100 
     
     for layer in base_model.layers[:fine_tune_at]:
         layer.trainable = False
         
-    # 2. Construir a nova cabeça de classificação
     model = Sequential([
         base_model, GlobalAveragePooling2D(), Dropout(0.5), 
         Dense(256, activation='relu'),
@@ -55,7 +54,7 @@ def create_efficientnet_model(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classe
     
     
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=5e-6), # Taxa de aprendizado muito baixa (0.000005)
+        optimizer=tf.keras.optimizers.Adam(learning_rate=5e-6),
         loss='categorical_crossentropy', 
         metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
     )
@@ -75,7 +74,7 @@ def plot_confusion_matrix(conf_matrix, class_names, title):
     plt.xlabel('Rótulo Previsto (Predicted Label)')
     plt.show()
 
-# --- 2. Preparação do Dataset e Data Augmentation (COM PRÉ-PROCESSAMENTO CORRIGIDO) ---
+#2. Preparação do Dataset e Data Augmentation 
 DATASET_PATH_TRAIN = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/train'
 DATASET_PATH_TEST = '/content/drive/MyDrive/Colab Notebooks/Visão_trab_final/dataset_split/test'
 
@@ -140,7 +139,7 @@ for run in range(len(SEEDS)):
     set_seeds(seed)
     print(f"\n################ RUN {run+1} - SEED: {seed} ################")
 
-    #  CENÁRIO 1: SEM DATA AUGMENTATION 
+    # Cenário 1: Sem data augmentation
     model_no_aug = create_efficientnet_model() 
     print("\n--- Treinando SEM Data Augmentation ---")
     model_no_aug.fit(
@@ -149,7 +148,7 @@ for run in range(len(SEEDS)):
     result = evaluate_model(model_no_aug, test_generator, "EfficientNetB0 SEM Data Aug", seed)
     results_no_aug.append(result)
 
-    # CENÁRIO 2: COM DATA AUGMENTATION 
+    # Cenário 2: Com data augmentation
     set_seeds(seed) 
     model_with_aug = create_efficientnet_model() 
     print("\n--- Treinando COM Data Augmentation ---")
@@ -159,7 +158,7 @@ for run in range(len(SEEDS)):
     result = evaluate_model(model_with_aug, test_generator, "EfficientNetB0 COM Data Aug", seed)
     results_with_aug.append(result)
 
-# 4. Cálculo e Apresentação Final (EfficientNetB0)
+# 4. Cálculo e Apresentação Final 
 def calculate_stats(results):
     df = pd.DataFrame(results).drop(columns=['Matriz de Confusão'])
     mean = df.mean().to_dict()
